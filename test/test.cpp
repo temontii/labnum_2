@@ -38,7 +38,7 @@ TEST_CASE("ArraySequence operations") {
         ArraySequence<int> seq;
         seq.AddToEnd(1);
         seq.AddToEnd(2);
-        seq.AddToFront(0);  // Исправлено с Prepend на AddToFront
+        seq.AddToFront(0); 
 
         REQUIRE(seq.Size() == 3);
         REQUIRE(seq.Front() == 0);
