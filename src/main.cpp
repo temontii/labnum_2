@@ -330,6 +330,7 @@ void RunInterface(std::vector<ISequenceWrapper*>& sequences) {
     }
 }
 
+
 int main() {
     std::vector<ISequenceWrapper*> sequences;
     RunInterface(sequences);
