@@ -2,7 +2,6 @@ CXX = g++
 CXXFLAGS = -std=c++17 -Wall -Wextra -pedantic -Iinclude -Itest
 LDFLAGS = 
 
-# Windows-specific commands
 RM = cmd /C del /Q /F
 RMDIR = cmd /C rmdir /Q /S
 MKDIR = cmd /C mkdir
