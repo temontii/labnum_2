@@ -66,9 +66,9 @@ TEST_CASE("ListSequence operations") {
 
 TEST_CASE("User type operations") {
     SECTION("User comparison") {
-        User u1("Alice", 25);
-        User u2("Alice", 25);
-        User u3("Bob", 30);
+        User u1("Anna", 25);
+        User u2("Anna", 25);
+        User u3("Steve", 30);
         
         REQUIRE(u1 == u2);
         REQUIRE_FALSE(u1 == u3);
