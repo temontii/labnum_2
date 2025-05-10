@@ -195,7 +195,7 @@ void DisplayStructureMenu() {
 }
 
 void DisplayMainMenu() {
-    std::cout << "\nMain Menu:\n"
+    std::cout << "\n====== Main Menu ======\n"
               << "1. Display sequences\n"
               << "2. Add element to end\n"
               << "3. Add element to front\n"
