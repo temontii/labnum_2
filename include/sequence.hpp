@@ -50,3 +50,4 @@ template<typename T>
 bool operator!=(const ISequence<T>& first, const ISequence<T>& second) {
     return !(first == second);
 }
+
