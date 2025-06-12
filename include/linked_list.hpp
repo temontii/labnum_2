@@ -2,6 +2,7 @@
 #include <stdexcept>
 #include "errors.hpp"
 
+
 template <typename T>
 class LinkedList {
 private:
