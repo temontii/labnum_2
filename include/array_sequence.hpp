@@ -13,7 +13,7 @@ protected:
 
 public:
     ArraySequence();
-    ArraySequence(T* items, int count);
+    ArraySequence(const T* items, int count);
     ArraySequence(const ArraySequence<T>& other);
     explicit ArraySequence(const DynamicArray<T>& arr);
     ~ArraySequence() override;
@@ -48,6 +48,7 @@ public:
     ISequence<T>* Copy() const override;
 };
 
+
 template <typename T>
 ISequence<T>* ArraySequence<T>::CreateFromArray(DynamicArray<T>* arr) const {
     return new ArraySequence<T>(*arr);
@@ -57,10 +58,11 @@ template <typename T>
 void ArraySequence<T>::EnsureCapacity(int newCapacity) {
     if (newCapacity <= capacity) return;
     capacity = newCapacity < 2 * capacity ? 2 * capacity : newCapacity;
-    DynamicArray<T>* newArray = new DynamicArray<T>(capacity);
+    DynamicArray<T>* newArray = new DynamicArray<T>(array->GetSize());
     for (int i = 0; i < array->GetSize(); i++) {
         newArray->Set(i, array->Get(i));
     }
+    newArray->Resize(array->GetSize());
     delete array;
     array = newArray;
 }
@@ -69,7 +71,7 @@ template <typename T>
 ArraySequence<T>::ArraySequence() : array(new DynamicArray<T>(0)), capacity(1) {}
 
 template <typename T>
-ArraySequence<T>::ArraySequence(T* items, int count) : array(new DynamicArray<T>(items, count)), capacity(count) {}
+ArraySequence<T>::ArraySequence(const T* items, int count) : array(new DynamicArray<T>(items, count)), capacity(count) {}
 
 template <typename T>
 ArraySequence<T>::ArraySequence(const ArraySequence<T>& other) : array(new DynamicArray<T>(*other.array)), capacity(other.capacity) {}
@@ -129,9 +131,9 @@ ISequence<T>* ArraySequence<T>::Combine(const ISequence<T>* other) const {
 
 template <typename T>
 ISequence<T>* ArraySequence<T>::AddToEnd(T item) {
-    EnsureCapacity(array->GetSize() + 1);
     array->Resize(array->GetSize() + 1);
     array->Set(array->GetSize() - 1, item);
+    capacity = array->GetSize();
     return this;
 }
 
@@ -139,7 +141,7 @@ template <typename T>
 ISequence<T>* ArraySequence<T>::AddToFront(T item) {
     EnsureCapacity(array->GetSize() + 1);
     array->Resize(array->GetSize() + 1);
-    for (int i = array->GetSize() - 1; i >= 1; i--) { 
+    for (int i = array->GetSize() - 1; i >= 1; i--) {
         array->Set(i, array->Get(i - 1));
     }
     array->Set(0, item);
@@ -151,7 +153,7 @@ ISequence<T>* ArraySequence<T>::Insert(T item, int index) {
     if (index < 0 || index > array->GetSize()) throw Errors::IndexOutOfRange();
     EnsureCapacity(array->GetSize() + 1);
     array->Resize(array->GetSize() + 1);
-    for (int i = array->GetSize() - 1; i >= index + 1; i--) { 
+    for (int i = array->GetSize() - 1; i > index; i--) {
         array->Set(i, array->Get(i - 1));
     }
     array->Set(index, item);
