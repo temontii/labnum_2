@@ -10,7 +10,7 @@ private:
 
 public:
     DynamicArray(int size);
-    DynamicArray(T* items, int count);
+    DynamicArray(const T* items, int count);
     DynamicArray(const DynamicArray<T>& other);
     ~DynamicArray();
 
@@ -28,7 +28,6 @@ public:
 template<typename T>
 bool operator==(const DynamicArray<T>& lhs, const DynamicArray<T>& rhs);
 
-
 template <typename T>
 DynamicArray<T>::DynamicArray(int size) {
     if (size < 0) throw Errors::InvalidSize();
@@ -37,7 +36,7 @@ DynamicArray<T>::DynamicArray(int size) {
 }
 
 template <typename T>
-DynamicArray<T>::DynamicArray(T* items, int count) {
+DynamicArray<T>::DynamicArray(const T* items, int count) { 
     if (count < 0) throw Errors::InvalidSize();
     size = count;
     data = new T[size];
