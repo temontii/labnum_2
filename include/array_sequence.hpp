@@ -1,45 +1,48 @@
-#pragma once
-#include "sequence.hpp"
+#ifndef ARRAY_SEQUENCE_HPP
+#define ARRAY_SEQUENCE_HPP
+
 #include "dynamic_array.hpp"
-#include "errors.hpp"
-#include <stdexcept>
+#include "sequence.hpp"
+#include <algorithm>
 
 template <typename T>
 class ArraySequence : public ISequence<T> {
 protected:
     DynamicArray<T>* array;
     int capacity;
-    ISequence<T>* CreateFromArray(DynamicArray<T>* arr) const;
+    void EnsureCapacity(int newCapacity);
 
 public:
     ArraySequence();
-    ArraySequence(const T* items, int count);
+    ArraySequence(int size);
+    ArraySequence(T* items, int size);
     ArraySequence(const ArraySequence<T>& other);
-    explicit ArraySequence(const DynamicArray<T>& arr);
     ~ArraySequence() override;
+
+    ArraySequence<T>& operator=(const ArraySequence<T>& other);
+
+    void Reserve(int newCapacity);
 
     T Front() const override;
     T Back() const override;
     T At(int index) const override;
-    int Size() const override;
-    ISequence<T>* Slice(int start, int end) const override;
-    ISequence<T>* Combine(const ISequence<T>* other) const override;
     ISequence<T>* AddToEnd(T item) override;
     ISequence<T>* AddToFront(T item) override;
     ISequence<T>* Insert(T item, int index) override;
     ISequence<T>* Delete(int index) override;
+    ISequence<T>* Slice(int start, int end) const override;
+    ISequence<T>* Combine(const ISequence<T>* other) const override;
+    int Size() const override;
     ISequence<T>* GetReference() override;
     ISequence<T>* Copy() const override;
 
-protected:
-    void EnsureCapacity(int newCapacity);
+    int Capacity() const;
 };
 
 template <typename T>
 class ImmutableArraySequence : public ArraySequence<T> {
 public:
-    using ArraySequence<T>::ArraySequence;
-    ISequence<T>* Combine(const ISequence<T>* other) const override;
+    ImmutableArraySequence(const ArraySequence<T>& seq) : ArraySequence<T>(seq) {}
     ISequence<T>* AddToEnd(T item) override;
     ISequence<T>* AddToFront(T item) override;
     ISequence<T>* Insert(T item, int index) override;
@@ -48,40 +51,68 @@ public:
     ISequence<T>* Copy() const override;
 };
 
+template <typename T>
+ArraySequence<T>::ArraySequence() : array(new DynamicArray<T>(0)), capacity(1) {}
 
 template <typename T>
-ISequence<T>* ArraySequence<T>::CreateFromArray(DynamicArray<T>* arr) const {
-    return new ArraySequence<T>(*arr);
+ArraySequence<T>::ArraySequence(int size) : array(new DynamicArray<T>(size)), capacity(size) {
+    if (size < 0) throw Errors::InvalidSize();
+}
+
+template <typename T>
+ArraySequence<T>::ArraySequence(T* items, int size) : array(new DynamicArray<T>(items, size)), capacity(size) {
+    if (size < 0) throw Errors::InvalidSize();
+}
+
+template <typename T>
+ArraySequence<T>::ArraySequence(const ArraySequence<T>& other) 
+    : array(new DynamicArray<T>(*other.array)), capacity(other.capacity) {}
+
+template <typename T>
+ArraySequence<T>::~ArraySequence() {
+    delete array;
+}
+
+template <typename T>
+ArraySequence<T>& ArraySequence<T>::operator=(const ArraySequence<T>& other) {
+    if (this != &other) {
+        DynamicArray<T>* newArray = nullptr;
+        try {
+            newArray = new DynamicArray<T>(*other.array);
+            delete array;
+            array = newArray;
+            capacity = other.capacity;
+        } catch (...) {
+            delete newArray;
+            throw;
+        }
+    }
+    return *this;
 }
 
 template <typename T>
 void ArraySequence<T>::EnsureCapacity(int newCapacity) {
     if (newCapacity <= capacity) return;
-    capacity = newCapacity < 2 * capacity ? 2 * capacity : newCapacity;
-    DynamicArray<T>* newArray = new DynamicArray<T>(array->GetSize());
-    for (int i = 0; i < array->GetSize(); i++) {
-        newArray->Set(i, array->Get(i));
+    capacity = std::max(newCapacity, capacity * 2);
+    DynamicArray<T>* newArray = nullptr;
+    try {
+        newArray = new DynamicArray<T>(capacity);
+        for (int i = 0; i < array->GetSize(); i++) {
+            newArray->Set(i, array->Get(i));
+        }
+        newArray->Resize(array->GetSize());
+        delete array;
+        array = newArray;
+    } catch (...) {
+        delete newArray;
+        throw;
     }
-    newArray->Resize(array->GetSize());
-    delete array;
-    array = newArray;
 }
 
 template <typename T>
-ArraySequence<T>::ArraySequence() : array(new DynamicArray<T>(0)), capacity(1) {}
-
-template <typename T>
-ArraySequence<T>::ArraySequence(const T* items, int count) : array(new DynamicArray<T>(items, count)), capacity(count) {}
-
-template <typename T>
-ArraySequence<T>::ArraySequence(const ArraySequence<T>& other) : array(new DynamicArray<T>(*other.array)), capacity(other.capacity) {}
-
-template <typename T>
-ArraySequence<T>::ArraySequence(const DynamicArray<T>& arr) : array(new DynamicArray<T>(arr)), capacity(arr.GetSize()) {}
-
-template <typename T>
-ArraySequence<T>::~ArraySequence() {
-    delete array;
+void ArraySequence<T>::Reserve(int newCapacity) {
+    if (newCapacity < 0) throw Errors::InvalidSize();
+    EnsureCapacity(newCapacity);
 }
 
 template <typename T>
@@ -98,42 +129,15 @@ T ArraySequence<T>::Back() const {
 
 template <typename T>
 T ArraySequence<T>::At(int index) const {
+    if (index < 0 || index >= array->GetSize()) throw Errors::IndexOutOfRange();
     return array->Get(index);
 }
 
 template <typename T>
-int ArraySequence<T>::Size() const {
-    return array->GetSize();
-}
-
-template <typename T>
-ISequence<T>* ArraySequence<T>::Slice(int start, int end) const {
-    DynamicArray<T>* sub = array->GetSubArray(start, end);
-    auto* result = new ArraySequence<T>(*sub);
-    delete sub;
-    return result;
-}
-
-template <typename T>
-ISequence<T>* ArraySequence<T>::Combine(const ISequence<T>* other) const {
-    const auto* otherArray = dynamic_cast<const ArraySequence<T>*>(other);
-    if (!otherArray) throw Errors::TypeMismatch();
-    int total = array->GetSize() + otherArray->array->GetSize();
-    DynamicArray<T>* result = new DynamicArray<T>(total);
-    for (int i = 0; i < array->GetSize(); i++) {
-        result->Set(i, array->Get(i));
-    }
-    for (int j = 0; j < otherArray->array->GetSize(); j++) {
-        result->Set(j + array->GetSize(), otherArray->array->Get(j));
-    }
-    return CreateFromArray(result);
-}
-
-template <typename T>
 ISequence<T>* ArraySequence<T>::AddToEnd(T item) {
+    EnsureCapacity(array->GetSize() + 1);
     array->Resize(array->GetSize() + 1);
     array->Set(array->GetSize() - 1, item);
-    capacity = array->GetSize();
     return this;
 }
 
@@ -141,7 +145,7 @@ template <typename T>
 ISequence<T>* ArraySequence<T>::AddToFront(T item) {
     EnsureCapacity(array->GetSize() + 1);
     array->Resize(array->GetSize() + 1);
-    for (int i = array->GetSize() - 1; i >= 1; i--) {
+    for (int i = array->GetSize() - 1; i > 0; i--) {
         array->Set(i, array->Get(i - 1));
     }
     array->Set(0, item);
@@ -162,9 +166,39 @@ ISequence<T>* ArraySequence<T>::Insert(T item, int index) {
 
 template <typename T>
 ISequence<T>* ArraySequence<T>::Delete(int index) {
-    if (array->GetSize() == 0) throw Errors::EmptyContainer();
-    array->Remove(index);
+    if (index < 0 || index >= array->GetSize()) throw Errors::IndexOutOfRange();
+    for (int i = index; i < array->GetSize() - 1; i++) {
+        array->Set(i, array->Get(i + 1));
+    }
+    array->Resize(array->GetSize() - 1);
     return this;
+}
+
+template <typename T>
+ISequence<T>* ArraySequence<T>::Slice(int start, int end) const {
+    if (start < 0 || end > array->GetSize() || start > end) throw Errors::IndexOutOfRange();
+    ArraySequence<T>* result = new ArraySequence<T>();
+    result->EnsureCapacity(end - start);
+    result->array->Resize(end - start);
+    for (int i = start; i < end; i++) {
+        result->array->Set(i - start, array->Get(i));
+    }
+    return result;
+}
+
+template <typename T>
+ISequence<T>* ArraySequence<T>::Combine(const ISequence<T>* other) const {
+    ArraySequence<T>* result = new ArraySequence<T>(*this);
+    result->EnsureCapacity(array->GetSize() + other->Size());
+    for (int i = 0; i < other->Size(); i++) {
+        result->AddToEnd(other->At(i));
+    }
+    return result;
+}
+
+template <typename T>
+int ArraySequence<T>::Size() const {
+    return array->GetSize();
 }
 
 template <typename T>
@@ -178,54 +212,46 @@ ISequence<T>* ArraySequence<T>::Copy() const {
 }
 
 template <typename T>
-ISequence<T>* ImmutableArraySequence<T>::Combine(const ISequence<T>* other) const {
-    const auto* otherArray = dynamic_cast<const ImmutableArraySequence<T>*>(other);
-    if (!otherArray) throw Errors::TypeMismatch();
-    int total = this->Size() + otherArray->Size();
-    DynamicArray<T> combined(total);
-    for (int i = 0; i < this->Size(); ++i) {
-        combined.Set(i, this->At(i));
-    }
-    for (int j = 0; j < otherArray->Size(); ++j) {
-        combined.Set(j + this->Size(), otherArray->At(j));
-    }
-    return new ImmutableArraySequence<T>(combined);
+int ArraySequence<T>::Capacity() const {
+    return capacity;
 }
 
 template <typename T>
 ISequence<T>* ImmutableArraySequence<T>::AddToEnd(T item) {
-    auto* copy = new ImmutableArraySequence<T>(*this);
-    copy->ArraySequence<T>::AddToEnd(item);
-    return copy;
+    ArraySequence<T>* copy = new ArraySequence<T>(*this);
+    copy->AddToEnd(item);
+    return new ImmutableArraySequence<T>(*copy);
 }
 
 template <typename T>
 ISequence<T>* ImmutableArraySequence<T>::AddToFront(T item) {
-    auto* copy = new ImmutableArraySequence<T>(*this);
-    copy->ArraySequence<T>::AddToFront(item);
-    return copy;
+    ArraySequence<T>* copy = new ArraySequence<T>(*this);
+    copy->AddToFront(item);
+    return new ImmutableArraySequence<T>(*copy);
 }
 
 template <typename T>
 ISequence<T>* ImmutableArraySequence<T>::Insert(T item, int index) {
-    auto* copy = new ImmutableArraySequence<T>(*this);
-    copy->ArraySequence<T>::Insert(item, index);
-    return copy;
+    ArraySequence<T>* copy = new ArraySequence<T>(*this);
+    copy->Insert(item, index);
+    return new ImmutableArraySequence<T>(*copy);
 }
 
 template <typename T>
 ISequence<T>* ImmutableArraySequence<T>::Delete(int index) {
-    auto* copy = new ImmutableArraySequence<T>(*this);
-    copy->ArraySequence<T>::Delete(index);
-    return copy;
+    ArraySequence<T>* copy = new ArraySequence<T>(*this);
+    copy->Delete(index);
+    return new ImmutableArraySequence<T>(*copy);
 }
 
 template <typename T>
 ISequence<T>* ImmutableArraySequence<T>::GetReference() {
-    return this->Copy();
+    return new ImmutableArraySequence<T>(*this);
 }
 
 template <typename T>
 ISequence<T>* ImmutableArraySequence<T>::Copy() const {
     return new ImmutableArraySequence<T>(*this);
 }
+
+#endif
