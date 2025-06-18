@@ -253,7 +253,7 @@ void RunInterface(std::vector<ISequenceWrapper*>& sequences) {
     while (true) {
         try {
             DisplayMainMenu();
-            int choice = GetIntInput(""); // Fixed: Added empty string as argument
+            int choice = GetIntInput("");
             if (choice != 9 && choice != 11 && sequences.empty()) {
                 std::cout << "No sequences available. Please add a sequence first.\n";
                 continue;
