@@ -1,44 +1,46 @@
-#pragma once
-#include <stdexcept>
+#ifndef DYNAMIC_ARRAY_HPP
+#define DYNAMIC_ARRAY_HPP
+
 #include "errors.hpp"
+#include <algorithm>
 
 template <typename T>
 class DynamicArray {
-private:
+protected:
     T* data;
     int size;
 
 public:
+    DynamicArray();
     DynamicArray(int size);
-    DynamicArray(const T* items, int count);
+    DynamicArray(T* items, int size);
     DynamicArray(const DynamicArray<T>& other);
     ~DynamicArray();
 
-    T Get(int index) const;
-    int GetSize() const;
+    T& Get(int index);
+    const T& Get(int index) const;
     void Set(int index, T value);
+    int GetSize() const;
     void Resize(int newSize);
-    DynamicArray<T>* GetSubArray(int startIndex, int endIndex) const;
     void Remove(int index);
-
-    T& operator[](int index);
-    const T& operator[](int index) const;
+    DynamicArray<T>* GetSubArray(int start, int end) const;
 };
 
-template<typename T>
-bool operator==(const DynamicArray<T>& lhs, const DynamicArray<T>& rhs);
+template <typename T>
+DynamicArray<T>::DynamicArray() : data(nullptr), size(0) {}
 
 template <typename T>
-DynamicArray<T>::DynamicArray(int size) {
+DynamicArray<T>::DynamicArray(int size) : size(size) {
     if (size < 0) throw Errors::InvalidSize();
-    this->size = size;
     data = new T[size];
+    for (int i = 0; i < size; i++) {
+        data[i] = T();
+    }
 }
 
 template <typename T>
-DynamicArray<T>::DynamicArray(const T* items, int count) { 
-    if (count < 0) throw Errors::InvalidSize();
-    size = count;
+DynamicArray<T>::DynamicArray(T* items, int size) : size(size) {
+    if (size < 0) throw Errors::InvalidSize();
     data = new T[size];
     for (int i = 0; i < size; i++) {
         data[i] = items[i];
@@ -46,8 +48,7 @@ DynamicArray<T>::DynamicArray(const T* items, int count) {
 }
 
 template <typename T>
-DynamicArray<T>::DynamicArray(const DynamicArray<T>& other) {
-    size = other.size;
+DynamicArray<T>::DynamicArray(const DynamicArray<T>& other) : size(other.size) {
     data = new T[size];
     for (int i = 0; i < size; i++) {
         data[i] = other.data[i];
@@ -60,9 +61,21 @@ DynamicArray<T>::~DynamicArray() {
 }
 
 template <typename T>
-T DynamicArray<T>::Get(int index) const {
+T& DynamicArray<T>::Get(int index) {
     if (index < 0 || index >= size) throw Errors::IndexOutOfRange();
     return data[index];
+}
+
+template <typename T>
+const T& DynamicArray<T>::Get(int index) const {
+    if (index < 0 || index >= size) throw Errors::IndexOutOfRange();
+    return data[index];
+}
+
+template <typename T>
+void DynamicArray<T>::Set(int index, T value) {
+    if (index < 0 || index >= size) throw Errors::IndexOutOfRange();
+    data[index] = std::move(value);
 }
 
 template <typename T>
@@ -71,35 +84,19 @@ int DynamicArray<T>::GetSize() const {
 }
 
 template <typename T>
-void DynamicArray<T>::Set(int index, T value) {
-    if (index < 0 || index >= size) throw Errors::IndexOutOfRange();
-    data[index] = value;
-}
-
-template <typename T>
 void DynamicArray<T>::Resize(int newSize) {
     if (newSize < 0) throw Errors::InvalidSize();
     T* newData = new T[newSize];
-    int copySize = newSize < size ? newSize : size;
+    int copySize = std::min(newSize, size);
     for (int i = 0; i < copySize; i++) {
-        newData[i] = data[i];
+        newData[i] = std::move(data[i]);
+    }
+    for (int i = copySize; i < newSize; i++) {
+        newData[i] = T();
     }
     delete[] data;
     data = newData;
     size = newSize;
-}
-
-template <typename T>
-DynamicArray<T>* DynamicArray<T>::GetSubArray(int startIndex, int endIndex) const {
-    if (startIndex < 0 || endIndex >= size || startIndex > endIndex) {
-        throw Errors::InvalidRange();
-    }
-    int subSize = endIndex - startIndex + 1;
-    DynamicArray<T>* subArray = new DynamicArray<T>(subSize);
-    for (int i = 0; i < subSize; i++) {
-        subArray->Set(i, data[startIndex + i]);
-    }
-    return subArray;
 }
 
 template <typename T>
@@ -112,22 +109,13 @@ void DynamicArray<T>::Remove(int index) {
 }
 
 template <typename T>
-T& DynamicArray<T>::operator[](int index) {
-    if (index < 0 || index >= size) throw Errors::IndexOutOfRange();
-    return data[index];
-}
-
-template <typename T>
-const T& DynamicArray<T>::operator[](int index) const {
-    if (index < 0 || index >= size) throw Errors::IndexOutOfRange();
-    return data[index];
-}
-
-template<typename T>
-bool operator==(const DynamicArray<T>& lhs, const DynamicArray<T>& rhs) {
-    if (lhs.GetSize() != rhs.GetSize()) return false;
-    for (int i = 0; i < lhs.GetSize(); ++i) {
-        if (lhs[i] != rhs[i]) return false;
+DynamicArray<T>* DynamicArray<T>::GetSubArray(int start, int end) const {
+    if (start < 0 || end > size || start > end) throw Errors::IndexOutOfRange();
+    DynamicArray<T>* result = new DynamicArray<T>(end - start);
+    for (int i = start; i < end; i++) {
+        result->Set(i - start, data[i]);
     }
-    return true;
+    return result;
 }
+
+#endif
